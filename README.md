@@ -1,4 +1,4 @@
-# What is this?
+# What is this App?
 
 This is NFT mint Site called NFT shrine.
 If you have unused NFT, you can send it to this Shrine and you can get NFT called EmaFT.

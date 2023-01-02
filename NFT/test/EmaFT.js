@@ -27,9 +27,12 @@ describe('ContactNFT', function () {
     await approveTx.wait();
     console.log('approved transfer');
 
-    const emaMintTx = await emaFT.mint('こんにちは\n世界', testNFT.address, 0);
+    const emaMintTx = await emaFT.mint('こんにちは!\n世界', testNFT.address, 0);
     await emaMintTx.wait();
     console.log('minted EmaFT');
+
+    const emaGoalTx = await emaFT.setAchieved(0);
+    await emaGoalTx.wait();
     console.log(await emaFT.tokenURI(0));
   }).timeout(100000);
 });

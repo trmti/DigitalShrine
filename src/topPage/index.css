@@ -1,0 +1,90 @@
+#Top {
+  width: 100vw;
+  height: 100vh;
+  background-color: #ffffff;
+  background-image: url('../top.png');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position-y: 100px;
+}
+header {
+  height: 200px;
+  width: 100%;
+  text-align: center;
+  background-color: white;
+}
+header p {
+  margin: 0;
+}
+
+#leftPage {
+  cursor: pointer;
+  position: absolute;
+  top: 55%;
+  left: 30px;
+  background-color: rgba(255, 255, 255, 0.5);
+}
+#leftPage img {
+  width: 30px;
+  border-radius: 100px;
+  padding: 10px 15px;
+  border: 5px solid #000;
+}
+
+#logo {
+  margin-top: 20px;
+  height: 80px;
+}
+
+#JapName {
+  font-size: 36px;
+  font-family: 'ヒラギノ角ゴ ProN W3', HiraKakuProN-W3, 游ゴシック, 'Yu Gothic',
+    メイリオ, Meiryo, Verdana, Helvetica, Arial, sans-serif;
+}
+
+#saisen {
+  display: inline-block;
+  text-align: center;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  top: 70%;
+  left: 50%;
+  cursor: pointer;
+}
+#saisen p {
+  display: inline-block;
+  background-color: #fff;
+}
+#saisen:active {
+  top: calc(70% + 10px);
+}
+#saisen:active .coin {
+  animation-name: fallCoin;
+  animation-duration: 0.4s;
+}
+
+.coin {
+  width: 50px;
+  position: absolute;
+  left: 50%;
+  top: calc(100% - 300px - 15%);
+  transition: all 0.5s;
+  opacity: 0;
+}
+#saisenBox {
+  width: 300px;
+}
+
+@keyframes fallCoin {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+    top: calc(100% - 225px - 15%);
+  }
+  100% {
+    opacity: 0;
+    top: calc(100% - 150px - 15%);
+  }
+}
