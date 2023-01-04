@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useAccount, useNetwork, useSwitchNetwork, useSigner } from 'wagmi';
+import {
+  useAccount,
+  useNetwork,
+  useSwitchNetwork,
+  useSigner,
+  useContractRead,
+} from 'wagmi';
 import { polygon } from 'wagmi/chains';
 import { useNavigate } from 'react-router-dom';
-import { ethers } from 'ethers';
+import { ethers, BigNumber } from 'ethers';
 import parse from 'html-react-parser';
 import ABI from '../ABI.json';
 import './index.css';
@@ -13,7 +19,6 @@ const approveNFT = async (address, id, signer) => {
   tx = await tx.wait();
   return tx;
 };
-
 const mintNFT = async (text, address, id, signer) => {
   const contract = new ethers.Contract(
     process.env.REACT_APP_CONTRACT_ADDRESS,
@@ -24,6 +29,57 @@ const mintNFT = async (text, address, id, signer) => {
   tx = await tx.wait();
   return tx;
 };
+const getNfts = async (address, setLoading, addressFilter = false) => {
+  setLoading(true);
+  let nfts;
+  if (addressFilter) {
+    nfts = await fetch(
+      `https://polygon-mainnet.g.alchemy.com/nft/v2/${process.env.REACT_APP_ALCKEMY_API_KEY}/getNFTs?owner=${address}&pageSize=100&contractAddresses\[\]=${process.env.REACT_APP_CONTRACT_ADDRESS}&withMetadata=true`
+    );
+  } else {
+    nfts = await fetch(
+      `https://polygon-mainnet.g.alchemy.com/nft/v2/${process.env.REACT_APP_ALCKEMY_API_KEY}/getNFTs?owner=${address}&pageSize=100&withMetadata=true`
+    );
+  }
+  let res = await nfts.json();
+  console.log(res);
+  return await Promise.all(
+    res.ownedNfts.map(async (nft) => {
+      let image;
+      const uri = nft.tokenUri.gateway;
+      if (uri.startsWith('https://') || uri.startsWith('http://')) {
+        try {
+          image = (await (await fetch(uri)).json()).image;
+          if (image.startsWith('ipfs://')) {
+            const res = await (
+              await fetch(
+                'https://alchemy.mypinata.cloud/ipfs/' + image.split('/')[2]
+              )
+            ).blob();
+            image = window.URL.createObjectURL(res);
+          } else if (image == '') {
+            image = '/no_image.png';
+          }
+        } catch (e) {
+          image = '/no_image.png';
+        }
+      } else if (uri.startsWith('<svg')) {
+        image = nft.tokenUri.raw;
+      } else {
+        image = nft.tokenUri.raw;
+      }
+      setLoading(false);
+      return {
+        image: image,
+        title: nft.contractMetadata.name,
+        description: nft.description,
+        address: nft.contract.address,
+        id: Number(nft.id.tokenId),
+      };
+    })
+  );
+};
+
 function Card({ image, title, description, onClick }) {
   return (
     <div className="card" onClick={onClick}>
@@ -35,11 +91,20 @@ function Card({ image, title, description, onClick }) {
 }
 
 function MintNFT() {
+  const dialog = document.getElementById('mintDialog');
+
   const { address, isConnected } = useAccount();
+  const { data: NFTBalance } = useContractRead({
+    address: process.env.REACT_APP_CONTRACT_ADDRESS,
+    abi: ABI,
+    functionName: 'balanceOf',
+    args: [address],
+  });
   const { chain } = useNetwork();
   const { switchNetwork } = useSwitchNetwork();
   const { data: signer } = useSigner();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingDialog, setLoadingDialog] = useState(false);
   const [approved, setApproved] = useState(false);
   const [nftInfo, setNftInfo] = useState();
 
@@ -54,79 +119,65 @@ function MintNFT() {
       navigate(`/`);
     } else if (chain.id !== polygon.id) {
       switchNetwork?.(polygon.id);
+    }
+    if (NFTBalance != BigNumber.from(0)) {
+      (async () => {
+        const nfts = await getNfts(address, setLoading, true);
+        setNfts(nfts);
+      })();
     } else {
       (async () => {
-        const nfts = await fetch(
-          `https://polygon-mainnet.g.alchemy.com/nft/v2/${process.env.REACT_APP_ALCKEMY_API_KEY}/getNFTs?owner=${address}&pageSize=100&withMetadata=true`
-        );
-        let res = await nfts.json();
-        setNfts(
-          await Promise.all(
-            res.ownedNfts.map(async (nft) => {
-              let image;
-              const uri = nft.tokenUri.gateway;
-              if (uri.startsWith('https://') || uri.startsWith('http://')) {
-                try {
-                  image = (await (await fetch(uri)).json()).image;
-                  if (image.startsWith('ipfs://')) {
-                    const res = await (
-                      await fetch(
-                        'https://alchemy.mypinata.cloud/ipfs/' +
-                          image.split('/')[2]
-                      )
-                    ).blob();
-                    image = window.URL.createObjectURL(res);
-                  }
-                } catch (e) {
-                  console.error(e);
-                  image = '/logo.png';
-                }
-              } else if (uri.startsWith('<svg')) {
-                image = nft.tokenUri.raw;
-              } else {
-                image = nft.tokenUri.raw;
-              }
-              return {
-                image: image,
-                title: nft.contractMetadata.name,
-                description: nft.description,
-                address: nft.contract.address,
-                id: Number(nft.id.tokenId),
-              };
-            })
-          )
-        );
+        const nfts = await getNfts(address, setLoading);
+        setNfts(nfts);
       })();
     }
   }, [address, chain]);
   return (
     <div id="wrapper">
       <dialog id="mintDialog">
-        <p>I'm dialog</p>
+        <img
+          src="/cross.svg"
+          id="dialogClose"
+          onClick={() => {
+            setApproved(false);
+            dialog['close']();
+          }}
+        />
         {approved ? (
           <div>
-            <form>
+            <form id="submitForm">
               <label>今年の抱負</label>
-              <textarea ref={inputRef} />
+              <textarea
+                ref={inputRef}
+                placeholder="毎日&#10;風呂に&#10;入る"
+              />
               <button
+                className="web3Btn"
+                disabled={loadingDialog}
                 onClick={async (event) => {
-                  console.log(nftInfo.address, nftInfo.id);
+                  setLoadingDialog(true);
                   event.preventDefault();
-                  const res = await mintNFT(
-                    inputRef.current.value,
-                    nftInfo.address,
-                    nftInfo.id,
-                    signer
-                  );
-                  if (res.status === 1) {
-                    alert('mint success!');
-                    setApproved(false);
-                    const dialog = document.getElementById('mintDialog');
-                    dialog['close']();
-                  } else {
-                    alert('transaction failed');
-                    console.log(res);
+                  try {
+                    const res = await mintNFT(
+                      inputRef.current.value,
+                      nftInfo.address,
+                      nftInfo.id,
+                      signer
+                    );
+                    if (res.status === 1) {
+                      alert('mint success!');
+                      setApproved(false);
+                      dialog['close']();
+                    } else {
+                      alert('transaction failed');
+                      console.log(res);
+                    }
+                  } catch (e) {
+                    alert(
+                      'あなたはすでにNFTを発行しています。\n このNFTは一人一つまでです。'
+                    );
                   }
+                  setLoadingDialog(false);
                 }}
               >
                 mint
@@ -135,56 +186,80 @@ function MintNFT() {
           </div>
         ) : (
           <div>
+            <p>
+              奉納を許可するなら、
+              <br />
+              許可ボタンを押してね
+            </p>
             <button
+              className="web3Btn"
+              disabled={loadingDialog}
               onClick={async () => {
-                const res = await approveNFT(
-                  nftInfo.address,
-                  nftInfo.id,
-                  signer
-                );
-                if (res.status === 1) {
-                  setApproved(true);
-                } else {
-                  alert('Transaction failed');
+                setLoadingDialog(true);
+                try {
+                  const res = await approveNFT(
+                    nftInfo.address,
+                    nftInfo.id,
+                    signer
+                  );
+                  if (res.status === 1) {
+                    setApproved(true);
+                  } else {
+                    alert('Transaction failed');
+                  }
+                } catch (e) {
+                  alert('許可されませんでした。');
                 }
+                setLoadingDialog(false);
               }}
             >
-              approve
+              {loadingDialog ? (
+                <>
+                  <p>loading...</p>
+                  <div className="lds-ripple">
+                    <div></div>
+                    <div></div>
+                  </div>
+                </>
+              ) : (
+                <p>許可</p>
+              )}
             </button>
           </div>
         )}
-        <button
-          onClick={() => {
-            const dialog = document.getElementById('mintDialog');
-            dialog['close']();
-          }}
-        >
-          close
-        </button>
       </dialog>
       <div>
-        <h1>Click NFT you want to dump.</h1>
-        <div id="Cards">
-          {nfts ? (
-            nfts.map(({ image, title, description, address, id }, index) => {
-              return (
-                <Card
-                  image={image}
-                  title={title}
-                  description={description}
-                  onClick={() => {
-                    const dialog = document.getElementById('mintDialog');
-                    dialog['showModal']();
-                    setNftInfo({ address, id });
-                  }}
-                  key={index}
-                />
-              );
-            })
-          ) : (
-            <></>
-          )}
-        </div>
+        {NFTBalance > 0 ? (
+          <h1>あなたのNFT</h1>
+        ) : (
+          <h1>奉納したいNFTをクリック！</h1>
+        )}
+        {loading ? (
+          <Spin />
+        ) : (
+          <div id="Cards">
+            {nfts ? (
+              nfts.map(({ image, title, description, address, id }, index) => {
+                return (
+                  <Card
+                    image={image}
+                    title={title}
+                    description={description}
+                    onClick={() => {
+                      if (NFTBalance == 0) {
+                        dialog['showModal']();
+                        setNftInfo({ address, id });
+                      }
+                    }}
+                    key={index}
+                  />
+                );
+              })
+            ) : (
+              <></>
+            )}
+          </div>
+        )}
       </div>
       <div
         id="leftPage"
@@ -200,3 +275,22 @@ function MintNFT() {
 }
 
 export default MintNFT;
+
+function Spin() {
+  return (
+    <div className="lds-spinner">
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+  );
+}

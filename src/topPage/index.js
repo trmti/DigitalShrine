@@ -28,9 +28,9 @@ function Top() {
         <p>Digital Shrine</p>
       </header>
       <div id="saisen" onClick={onClick}>
+        <h1>↓ Click!</h1>
         <img className="coin" src="/coin.png" />
         <img id="saisenBox" src="/saisen.png" />
-        <p>{isConnected ? 'connected' : 'not connected'}</p>
       </div>
       <div id="leftPage" onClick={movePage}>
         <p>みんなの絵馬</p>

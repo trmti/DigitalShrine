@@ -51,6 +51,10 @@ header p {
   left: 50%;
   cursor: pointer;
 }
+#saisen h1 {
+  color: #00f7f7;
+  animation: yurayura 2s linear infinite;
+}
 #saisen p {
   display: inline-block;
   background-color: #fff;
@@ -86,5 +90,16 @@ header p {
   100% {
     opacity: 0;
     top: calc(100% - 150px - 15%);
+  }
+}
+@keyframes yurayura {
+  0% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(0, 25px);
+  }
+  100% {
+    transform: translate(0, 0);
   }
 }
