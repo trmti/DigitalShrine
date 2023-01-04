@@ -8,7 +8,7 @@ import {
 } from 'wagmi';
 import { polygon } from 'wagmi/chains';
 import { useNavigate } from 'react-router-dom';
-import { ethers, BigNumber } from 'ethers';
+import { ethers } from 'ethers';
 import parse from 'html-react-parser';
 import ABI from '../ABI.json';
 import './index.css';
@@ -42,8 +42,7 @@ const getNfts = async (address, setLoading, addressFilter = false) => {
     );
   }
   let res = await nfts.json();
-  console.log(res);
-  return await Promise.all(
+  const response = await Promise.all(
     res.ownedNfts.map(async (nft) => {
       let image;
       const uri = nft.tokenUri.gateway;
@@ -68,7 +67,6 @@ const getNfts = async (address, setLoading, addressFilter = false) => {
       } else {
         image = nft.tokenUri.raw;
       }
-      setLoading(false);
       return {
         image: image,
         title: nft.contractMetadata.name,
@@ -78,6 +76,8 @@ const getNfts = async (address, setLoading, addressFilter = false) => {
       };
     })
   );
+  setLoading(false);
+  return response;
 };
 
 function Card({ image, title, description, onClick }) {
@@ -120,7 +120,7 @@ function MintNFT() {
     } else if (chain.id !== polygon.id) {
       switchNetwork?.(polygon.id);
     }
-    if (NFTBalance != BigNumber.from(0)) {
+    if (NFTBalance != 0) {
       (async () => {
         const nfts = await getNfts(address, setLoading, true);
         setNfts(nfts);
@@ -131,7 +131,7 @@ function MintNFT() {
         setNfts(nfts);
       })();
     }
-  }, [address, chain]);
+  }, [address, chain, NFTBalance]);
   return (
     <div id="wrapper">
       <dialog id="mintDialog">
