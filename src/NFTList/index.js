@@ -54,6 +54,9 @@ function NFTList() {
         },
       ];
     },
+    onSuccess(data) {
+      console.log(data);
+    },
   });
   window.onscroll = async () => {
     if (
@@ -67,21 +70,25 @@ function NFTList() {
   };
 
   const navigate = useNavigate();
-  return (
-    <div id="wrapper">
-      <h1 id="title">みんなの絵馬</h1>
-      <Row NFTs={data.pages} loading={loading} />
-      <div
-        id="rightPage"
-        onClick={() => {
-          navigate('/');
-        }}
-      >
-        <p>Top Page</p>
-        <img src="/arrow.svg" alt="" />
+  if (!data) {
+    <Spin />;
+  } else {
+    return (
+      <div id="wrapper">
+        <h1 id="title">みんなの絵馬</h1>
+        <Row NFTs={data.pages} loading={loading} />
+        <div
+          id="rightPage"
+          onClick={() => {
+            navigate('/');
+          }}
+        >
+          <p>Top Page</p>
+          <img src="/arrow.svg" alt="" />
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 }
 
 export default NFTList;
